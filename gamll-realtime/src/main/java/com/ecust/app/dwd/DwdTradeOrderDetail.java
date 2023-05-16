@@ -18,9 +18,9 @@ import java.time.ZoneId;
  * 4.创建DWD层下单数据表
  * 5.将数据写入到kafka
  * 6.启动任务
-
- * 数据流 ： web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS)-> Kafka(ODS) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> FlinkAPP -> Kafka (DWD)-> FlinkAPP -> Kafka (DWD)
- * 程序：Mock(模拟产生业务数据) -> Mysql -> Maxwell ->  Kafka(ZK) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> DwdTrafficUniqueVisitorDetail -> Kafka (DWD)-> DwdTradeOrderPreProcess -> Kafka (DWD) -> DwdTradeOrderDetail -> Kafka (DWD)
+ * <p>
+ * * 数据流 ： web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS)-> Kafka(ODS) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> FlinkAPP -> Kafka (DWD)
+ * * 程序：Mock(模拟产生业务数据) -> Mysql -> Maxwell ->  Kafka(ZK) -> FlinkAPP(DwdTradeOrderPreProcess) -> Kafka(DWD) -> DwdTradeOrderDetail -> Kafka (DWD)
  */
 public class DwdTradeOrderDetail {
     public static void main(String[] args) throws Exception {

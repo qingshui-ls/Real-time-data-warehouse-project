@@ -46,6 +46,11 @@ import org.apache.flink.util.Collector;
  * 8）开窗、聚合
  * 度量字段求和，补充窗口起始时间和结束时间字段，ts 字段置为当前系统时间戳。
  * 9）写出到 ClickHouse。
+ * <p>
+ * 数据流 ： web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS)-> Kafka(ODS) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> FlinkAPP -> Kafka (DWD)-> FlinkAPP -> clickhouse(DWS)
+ * 程序：Mock(模拟产生业务数据) -> Mysql -> Maxwell ->  Kafka(ZK) -> FlinkAPP(DwdTradeOrderPreProcess) -> Kafka(DWD) -> DwdTradeOrderDetail -> Kafka (DWD)-> DwsTradeOrderWindow -> clickhouse(DWS)
+ * <p>
+ * DwdTradeOrderPreProcess + DwdTradeOrderDetail + DwsTradeOrderWindow
  */
 public class DwsTradeOrderWindow {
     public static void main(String[] args) throws Exception {
@@ -126,15 +131,9 @@ public class DwsTradeOrderWindow {
 
         // TODO 7. 设置水位线
         SingleOutputStreamOperator<JSONObject> withWatermarkStream = processedStream.assignTimestampsAndWatermarks(
-                WatermarkStrategy
-                        .<JSONObject>forMonotonousTimestamps()
+                WatermarkStrategy.<JSONObject>forMonotonousTimestamps()
                         .withTimestampAssigner(
-                                new SerializableTimestampAssigner<JSONObject>() {
-                                    @Override
-                                    public long extractTimestamp(JSONObject jsonObj, long recordTimestamp) {
-                                        return jsonObj.getLong("ts") * 1000;
-                                    }
-                                }
+                                (SerializableTimestampAssigner<JSONObject>) (jsonObj, recordTimestamp) -> DateFormatUtil.toTs(jsonObj.getString("create_time"), true)
                         )
         );
 
@@ -165,7 +164,7 @@ public class DwsTradeOrderWindow {
                         Double splitActivityAmount = jsonObj.getDouble("split_activity_amount");
                         Double splitCouponAmount = jsonObj.getDouble("split_coupon_amount");
                         Double splitOriginalAmount = jsonObj.getDouble("split_original_amount");
-                        Long ts = jsonObj.getLong("ts") * 1000L;
+//                        Long ts = jsonObj.getLong("ts") * 1000L;
 
                         if (lastOrderDt == null) {
                             orderNewUserCount = 1L;
@@ -185,7 +184,7 @@ public class DwsTradeOrderWindow {
                                 splitActivityAmount,
                                 splitCouponAmount,
                                 splitOriginalAmount,
-                                ts
+                                null
                         );
 
                         out.collect(tradeOrderBean);
@@ -271,6 +270,7 @@ public class DwsTradeOrderWindow {
                 }
         );
 
+        aggregatedStream.print("aggregatedStream>>>>");
         // TODO 12. 写出到 OLAP 数据库
         SinkFunction<TradeOrderBean> jdbcSink = ClickHouseUtil.<TradeOrderBean>getJdbcSink(
                 "insert into dws_trade_order_window values(?,?,?,?,?,?,?,?)"
