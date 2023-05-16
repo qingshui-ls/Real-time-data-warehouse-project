@@ -8,10 +8,7 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
 import java.time.ZoneId;
-/**
- *  * 数据流 ： web/app -> nginx -> 日志服务器(.log) -> Flume -> Kafka(ODS) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> FlinkAPP -> Kafka (DWD)-> FlinkAPP -> Kafka (DWD)
- *  * 程序：Mock(模拟产生日志数据，lg.sh) -> Flume(f1.sh) ->  Kafka(ZK)-> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> DwdTrafficUniqueVisitorDetail -> Kafka (DWD) -> DwdTradeOrderPreProcess -> Kafka (DWD)
- *  */
+
 public class DwdTradeOrderPreProcess {
     public static void main(String[] args) throws Exception {
 
@@ -182,9 +179,6 @@ public class DwdTradeOrderPreProcess {
         // TODO 11. 将关联结果写入 Upsert-Kafka 表
         tableEnv.executeSql("" +
                         "insert into dwd_trade_order_pre_process \n" +
-                        "select * from result_table")
-                .print();
-
-        env.execute();
+                        "select * from result_table");
     }
 }

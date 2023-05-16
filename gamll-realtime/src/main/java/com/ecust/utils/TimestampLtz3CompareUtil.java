@@ -21,8 +21,8 @@ public class TimestampLtz3CompareUtil {
         Long ts1 = DateFormatUtil.toTs(date1, true);
         Long ts2 = DateFormatUtil.toTs(date2, true);
         // 4. 获得精确到毫秒的时间戳
-        long microTs1 = ts1 * 1000 + micro1;
-        long microTs2 = ts2 * 1000 + micro2;
+        long microTs1 = ts1 + micro1;
+        long microTs2 = ts2 + micro2;
 
         long divTs = microTs1 - microTs2;
 

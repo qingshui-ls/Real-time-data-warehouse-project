@@ -10,7 +10,7 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import java.time.ZoneId;
 
 public class DwdTradePayDetailSuc {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
@@ -20,7 +20,8 @@ public class DwdTradePayDetailSuc {
         Configuration configuration = tableEnv.getConfig().getConfiguration();
         // 为表关联时状态中存储的数据设置过期时间
         configuration.setString("table.exec.state.ttl", "905 s");
-// TODO 3. 读取 Kafka dwd_trade_order_detail 主题数据，封装为 Flink SQL 表
+
+        // TODO 3. 读取 Kafka dwd_trade_order_detail 主题数据，封装为 Flink SQL 表
         tableEnv.executeSql("" +
                 "create table dwd_trade_order_detail(\n" +
                 "id string,\n" +
@@ -134,9 +135,12 @@ public class DwdTradePayDetailSuc {
                 "row_op_ts timestamp_ltz(3),\n" +
                 "primary key(order_detail_id) not enforced\n" +
                 ")" + KafkaUtil.getUpsertKafkaDDL("dwd_trade_pay_detail_suc"));
+        tableEnv.toChangelogStream(resultTable).print(">>>>>>");
 
         // TODO 9. 将关联结果写入 Upsert-Kafka 表
         tableEnv.executeSql("insert into dwd_trade_pay_detail_suc select * from result_table");
+
+        env.execute();
     }
 
 }

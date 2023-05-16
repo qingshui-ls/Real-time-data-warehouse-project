@@ -19,8 +19,8 @@ import java.time.ZoneId;
  * 5.将数据写入到kafka
  * 6.启动任务
 
- * 数据流 ： web/app -> nginx -> 日志服务器(.log) -> Flume -> Kafka(ODS) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> FlinkAPP -> Kafka (DWD)-> FlinkAPP -> Kafka (DWD)
- * 程序：Mock(模拟产生日志数据，lg.sh) -> Flume(f1.sh) ->  Kafka(ZK)-> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> DwdTrafficUniqueVisitorDetail -> Kafka (DWD)-> DwdTradeOrderPreProcess -> Kafka (DWD) -> DwdTradeOrderDetail -> Kafka (DWD)
+ * 数据流 ： web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS)-> Kafka(ODS) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> FlinkAPP -> Kafka (DWD)-> FlinkAPP -> Kafka (DWD)
+ * 程序：Mock(模拟产生业务数据) -> Mysql -> Maxwell ->  Kafka(ZK) -> FlinkAPP(BaseLogAPP) -> Kafka(DWD) -> DwdTrafficUniqueVisitorDetail -> Kafka (DWD)-> DwdTradeOrderPreProcess -> Kafka (DWD) -> DwdTradeOrderDetail -> Kafka (DWD)
  */
 public class DwdTradeOrderDetail {
     public static void main(String[] args) throws Exception {
