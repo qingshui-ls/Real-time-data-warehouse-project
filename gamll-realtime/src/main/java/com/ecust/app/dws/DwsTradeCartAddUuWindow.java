@@ -37,9 +37,9 @@ import org.apache.flink.util.Collector;
  * 6）开窗、聚合
  * 统计窗口中数据条数即为加购独立用户数，补充窗口起始时间、关闭时间，将时间戳字段置为当前系统时间，发送到下游。
  * 7）将数据写入 ClickHouse。
-
- *  数据流 ： web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS) -> FlinkAPP -> Kafka(DWD) -> FlinkAPP -> Clickhouse(DWS)
- *  * 程序：Mock(模拟产生业务数据) -> Mysql -> Maxwell ->  Kafka(ZK) -> FlinkAPP(DwdTradeCartAdd) -> Kafka(DWD) -> DwsTradeCartAddUuWindow -> Clickhouse(DWS)
+ * <p>
+ * 数据流 ： web/app -> nginx -> 业务服务器(Mysql) -> Maxwell -> Kafka(ODS) -> FlinkAPP -> Kafka(DWD) -> FlinkAPP -> Clickhouse(DWS)
+ * * 程序：Mock(模拟产生业务数据) -> Mysql -> Maxwell ->  Kafka(ZK) -> FlinkAPP(DwdTradeCartAdd) -> Kafka(DWD) -> DwsTradeCartAddUuWindow -> Clickhouse(DWS)
  */
 public class DwsTradeCartAddUuWindow {
     public static void main(String[] args) throws Exception {
@@ -63,7 +63,12 @@ public class DwsTradeCartAddUuWindow {
                                 new SerializableTimestampAssigner<JSONObject>() {
                                     @Override
                                     public long extractTimestamp(JSONObject jsonObj, long recordTimestamp) {
-                                        return jsonObj.getLong("ts") * 1000;
+                                        String operateTime = jsonObj.getString("operate_time");
+                                        if (operateTime != null) {
+                                            return DateFormatUtil.toTs(operateTime, true);
+                                        } else {
+                                            return DateFormatUtil.toTs(jsonObj.getString("create_time"), true);
+                                        }
                                     }
                                 }
                         )
@@ -80,7 +85,6 @@ public class DwsTradeCartAddUuWindow {
 
                     @Override
                     public void open(Configuration parameters) throws Exception {
-                        super.open(parameters);
                         lastCartAddDt = getRuntimeContext().getState(
                                 new ValueStateDescriptor<String>("last_cart_add_dt", String.class)
                         );
@@ -89,9 +93,16 @@ public class DwsTradeCartAddUuWindow {
                     @Override
                     public void processElement(JSONObject jsonObj, Context ctx, Collector<JSONObject> out) throws Exception {
                         String lastCartAdd = lastCartAddDt.value();
+                        String operateTime = jsonObj.getString("operate_time");
+                        String curDt = null;
+                        if (operateTime != null) {
+                            curDt = operateTime.split(" ")[0];
+                        }else {
+                            String createTime = jsonObj.getString("create_time");
+                            curDt = createTime.split(" ")[0];
+                        }
 
-                        String cartAddDt = DateFormatUtil.toDate(jsonObj.getLong("ts") * 1000L);
-                        if (lastCartAdd == null || !lastCartAdd.equals(cartAddDt)) {
+                        if (lastCartAdd == null || !lastCartAdd.equals(curDt)) {
                             out.collect(jsonObj);
                         }
                     }
@@ -146,6 +157,8 @@ public class DwsTradeCartAddUuWindow {
         );
 
         // TODO 10. 写入到 OLAP 数据库
+        aggregateDS.print(">>>");
+
         SinkFunction<CartAddUuBean> jdbcSink = ClickHouseUtil.<CartAddUuBean>getJdbcSink(
                 "insert into dws_trade_cart_add_uu_window values(?,?,?,?)"
         );
