@@ -29,6 +29,7 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
 
     @Override
     public void open(Configuration parameters) throws Exception {
+        super.open(parameters);
         connection = DriverManager.getConnection(GmallConfig.PHOENIX_SERVER);
     }
 
@@ -41,7 +42,7 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
     public void processElement(JSONObject jsonObject, BroadcastProcessFunction<JSONObject, String, JSONObject>.ReadOnlyContext readOnlyContext, Collector<JSONObject> collector) throws Exception {
         ReadOnlyBroadcastState<String, TableProcess> broadcastState = readOnlyContext.getBroadcastState(mapStateDescriptor);
         String table = jsonObject.getString("table");
-        TableProcess tableProcess = broadcastState.get(table); // null?
+        TableProcess tableProcess = broadcastState.get(table);
 
         if (tableProcess != null) {
             // 过滤字段
@@ -49,9 +50,10 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
             // 补充SinkTable字段并写出到流中
             jsonObject.put("sinkTable", tableProcess.getSinkTable());
             collector.collect(jsonObject);
-        } else {
-            System.out.println("找不到对应的key：" + table);
         }
+//        } else {
+//            System.out.println("找不到对应的key：" + table);
+//        }
 
 
     }
@@ -68,12 +70,6 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
         // 切分sinkColumns
         String[] split = sinkColumns.split(",");
         List<String> columnList = Arrays.asList(split);
-//        while (iterator.hasNext()) {
-//            Map.Entry<String, Object> next = iterator.next();
-//            if (!sinkColumns.contains(next.getKey())) {
-//                iterator.remove();
-//            }
-//        }
         entries.removeIf(x -> !columnList.contains(x.getKey()));
     }
 
@@ -85,15 +81,22 @@ public class TableProcessFunction extends BroadcastProcessFunction<JSONObject, S
     @Override
     public void processBroadcastElement(String s, BroadcastProcessFunction<JSONObject, String, JSONObject>.Context context, Collector<JSONObject> collector) throws Exception {
         JSONObject jsonObject = JSONObject.parseObject(s);
-        TableProcess tableProcess = JSON.parseObject(jsonObject.getString("after"), TableProcess.class);
-        //检验并建表
-        checkTable(tableProcess.getSinkTable(),
-                tableProcess.getSinkColumns(),
-                tableProcess.getSinkPk(),
-                tableProcess.getSinkExtend());
         // 写入状态并广播
         BroadcastState<String, TableProcess> broadcastState = context.getBroadcastState(mapStateDescriptor);
-        broadcastState.put(tableProcess.getSourceTable(), tableProcess);
+        String op = jsonObject.getString("op");
+        if ("d".equals(op)) {
+            TableProcess before = jsonObject.getObject("before", TableProcess.class);
+            String sourceTable = before.getSourceTable();
+            broadcastState.remove(sourceTable);
+        } else {
+            TableProcess config = jsonObject.getObject("after", TableProcess.class);
+            //检验并建表
+            checkTable(config.getSinkTable(),
+                    config.getSinkColumns(),
+                    config.getSinkPk(),
+                    config.getSinkExtend());
+            broadcastState.put(config.getSourceTable(), config);
+        }
     }
 
     /**

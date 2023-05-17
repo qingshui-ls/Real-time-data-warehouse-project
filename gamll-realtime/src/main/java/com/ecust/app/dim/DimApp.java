@@ -3,6 +3,7 @@ package com.ecust.app.dim;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.ecust.app.func.DIMSinkFunction;
+import com.ecust.app.func.MyBroadcastFunction;
 import com.ecust.app.func.TableProcessFunction;
 import com.ecust.bean.TableProcess;
 import com.ecust.utils.MyKafkaUtil;
@@ -54,6 +55,7 @@ public class DimApp {
                     // 获取数据中的操作类型字段
                     String type = jsonObject.getString("type");
                     // 保留新增、变化、以及初始化类型数据
+//                    bootstrap-insert
                     if ("insert".equals(type) || "update".equals(type) || "bootstrap-insert".equals(type)) {
                         collector.collect(jsonObject);
                     }
@@ -62,6 +64,7 @@ public class DimApp {
                 }
             }
         });
+
         // 4.使用FlinkCDC 读取mysql配置信息表创建配置流
         MySqlSource<String> mySqlSource = MySqlSource.<String>builder()
                 .hostname("hadoop102")
@@ -76,14 +79,14 @@ public class DimApp {
         DataStreamSource<String> mysqlSourceDS = env.fromSource(mySqlSource, WatermarkStrategy.noWatermarks(), "MysqlSource");
 
         // 5.将配置流处理为广播流
-        MapStateDescriptor<String, TableProcess> mapStateDescriptor = new MapStateDescriptor<>("map-state", String.class, TableProcess.class);
+        MapStateDescriptor<String, TableProcess> mapStateDescriptor = new MapStateDescriptor<>("table-process-state", String.class, TableProcess.class);
         BroadcastStream<String> broadcastStream = mysqlSourceDS.broadcast(mapStateDescriptor);
         // 6.连接主流和广播流
         BroadcastConnectedStream<JSONObject, String> connectedDS = filteredDS.connect(broadcastStream);
         // 7.处理连接流，根据配置信息处理主流数据
         SingleOutputStreamOperator<JSONObject> dimDS = connectedDS.process(new TableProcessFunction(mapStateDescriptor));
         // 8.将数据写出到Phoenix
-        dimDS.print(">>>");
+//        dimDS.print(">>>");
         dimDS.addSink(new DIMSinkFunction());
         // 9.启动任务
         env.execute("DimAPP");

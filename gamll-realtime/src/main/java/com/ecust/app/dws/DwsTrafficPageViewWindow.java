@@ -104,16 +104,20 @@ public class DwsTrafficPageViewWindow {
                 long homeCt = 0L;
                 long detailCt = 0L;
                 // 如果状态为空或者状态时间与当前时间不同，则为需要的数据
-                if (homeLastDt == null || !homeLastDt.equals(curDt)) {
-                    homeCt = 1L;
-                    homeLastState.update(curDt);
+                if ("home".equals(jsonObject.getJSONObject("page").getString("page_id"))) {
+                    if (homeLastDt == null || !homeLastDt.equals(curDt)) {
+                        homeCt = 1L;
+                        homeLastState.update(curDt);
+                    }
+                } else {
+                    if (detailLastDt == null || !detailLastDt.equals(curDt)) {
+                        detailCt = 1L;
+                        detailLastState.update(curDt);
+                    }
                 }
-                if (detailLastDt == null || !detailLastDt.equals(curDt)) {
-                    detailCt = 1L;
-                    detailLastState.update(curDt);
-                }
+
                 // 满足任何一个数据不为0，则可以写出
-                if (homeCt == 1L && detailCt == 1L) {
+                if (homeCt == 1L || detailCt == 1L) {
                     collector.collect(new TrafficHomeDetailPageViewBean("", "", homeCt, detailCt, ts));
                 }
             }
