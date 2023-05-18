@@ -137,6 +137,7 @@ public class DwsTradeProvinceOrderWindow {
                         TradeProvinceOrderWindow next = iterable.iterator().next();
                         next.setStt(DateFormatUtil.toYmdHms(timeWindow.getStart()));
                         next.setEdt(DateFormatUtil.toYmdHms(timeWindow.getEnd()));
+//                        System.out.println("TimeWindow End" + DateFormatUtil.toYmdHms(timeWindow.getStart()));
                         next.setTs(System.currentTimeMillis());
                         next.setOrderCount((long) next.getOrderIdSet().size());
                         collector.collect(next);
